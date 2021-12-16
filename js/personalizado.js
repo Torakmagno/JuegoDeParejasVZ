@@ -4,16 +4,15 @@ const url = new URL(window.location); // http://localhost:5500/personalizado.htm
 
 const filas = Number(url.searchParams.get("filas"));
 const columnas = Number(url.searchParams.get("columnas"));
-const luces = Number(url.searchParams.get("luces"));
-
 
 
 const elementos = document.getElementsByTagName("td"); // -> Devuelve lista de todos los <td></td>
 const tabla = document.getElementById("tablero"); // -> Devuelve el elemento cuyo id es tablero
 const niveles = document.getElementById("niveles");
 
-let ganador = false;
-
+// Determina si la interacción con el tablero está bloqueada
+let bloqueado = false;
+let ultimoSeleccionado;
 
 // Crear tabla
 let contenido = "";
@@ -22,19 +21,15 @@ let contenido = "";
 for (let i = 0; i < filas; i++) {
   let contenidoFila = "";
 
-    // Por cada fila iteramos columnas
-    for (let j = 0; j < columnas; j++) {
-      contenidoFila += "<td></td>";
-    }
+  // Por cada fila iteramos columnas
+  for (let j = 0; j < columnas; j++) {
+    contenidoFila += "<td></td>";
+  }
 
-    contenido += "<tr>" + contenidoFila + "</tr>";
+  contenido += "<tr>" + contenidoFila + "</tr>";
 }
 
 tabla.innerHTML = contenido;
-
-
-
-
 
 // Itera las filas
 for (let i = 0; i < tabla.rows.length; i++) {
@@ -43,73 +38,80 @@ for (let i = 0; i < tabla.rows.length; i++) {
   for (let j = 0; j < fila.cells.length; j++) {
     const casilla = fila.cells[j];
 
-    // i -> (num fila)
-    // j -> (num columna)
-    // casilla -> (td)
-    
     // asignamos onclick a la casilla
     casilla.onclick = () => {
 
-      if(ganador == false) { // Solo se ejecuta si no hay ganador
+      // Si el juego no ha finalizado y la casilla seleccionada no está iluminada
+      if (bloqueado == false && !casilla.classList.contains("iluminado")) {
+        // Solo se ejecuta si no hay ganador
 
-      casilla.classList.toggle("iluminado") // Interruptor de clases
+        casilla.innerHTML = `<h1>${casilla.getAttribute("pareja")}</h1>`; // Si usamos este tipo de comillas (` `), podemos combinar texto y variables (con ${})
+        casilla.classList.add("iluminado"); // Interruptor de clases
 
-      // Iluminar las de alrededor
+        // El primero que se selecciona
+        if (!ultimoSeleccionado) {
+          ultimoSeleccionado = casilla;
+        }
 
-      // arriba
-      if(i > 0) { 
-        tabla.rows[i-1] // seleccionamos fila (una menos)
-          .cells[j] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
+        // Parejas NO coinciden
+        else if (ultimoSeleccionado.getAttribute("pareja") != casilla.getAttribute("pareja")) {
+          
+          // Bloqueamos el click
+          bloqueado = true;
+
+          // Esperamos 1 segundo
+          setTimeout(() => {
+            // Apagamos la original (y ocultamos el texto)
+            ultimoSeleccionado.innerHTML = "";
+            ultimoSeleccionado.classList.remove("iluminado");
+
+            // Eliminamos la última seleccionada
+            ultimoSeleccionado = undefined; // En javascript moderno no se suele usar null
+
+            // Apagamos la seleccionada
+            casilla.innerHTML = "";
+            casilla.classList.remove("iluminado");
+
+            // Reactivamos el click
+            bloqueado = false;
+
+          }, 1000);
+        }
+
+        // Parejas coinciden
+        else {
+          ultimoSeleccionado = undefined;
+        }
+
+        comprobarGanador();
       }
-      
-      // abajo
-      if(i < tabla.rows.length - 1) {
-        tabla.rows[i+1] // seleccionamos fila (una menos)
-          .cells[j] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
-      }
-      
-      // izquierda
-      if(j > 0) {
-        tabla.rows[i] // seleccionamos fila (una menos)
-          .cells[j-1] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
-      }
-
-      // derecha
-      if(j < tabla.rows[0].cells.length - 1) {
-        tabla.rows[i] // seleccionamos fila (una menos)
-        .cells[j+1] // seleccionamos columna
-        .classList.toggle("iluminado") // ilumninamos
-      }
-      comprobarGanador();
-    }
-
+    };
   }
-  }
-
-  // const array = [ 10, 40, 30 ];
-
-  // array[0] -> 10
-  // array[1] -> 40
-  // array[2] -> 30
-
-  // array.length -> 3
-
-
-  
 }
 
-let generados = 0;
+if ((filas * columnas) % 2 != 0) {
+  alert("el número de casillas debe ser par. Reajustando...");
+  filas++;
+}
 
-while(generados < luces) {
-  const fila = getRandomArbitrary(0, tabla.rows.length);
-  const columna = getRandomArbitrary(0, tabla.rows[0].cells.length);
+for (let index = 0; index < (filas * columnas) / 2; index++) { // Hay tantas parejas como (filas*columnas)/2
+  generarPareja(index);  
+}
 
-  if(!tabla.rows[fila].cells[columna].classList.contains("iluminado")) { // Si la lista de clases no contiene iluminado 
-    tabla.rows[fila].cells[columna].classList.toggle("iluminado");
-    generados++;
+// Generamos las parejas (recibe el id de la pareja) 
+function generarPareja(id) {
+  let generados = 0;
+
+  // Como son parejas, hacemos 2
+  while (generados < 2) {
+    const fila = getRandomArbitrary(0, tabla.rows.length);
+    const columna = getRandomArbitrary(0, tabla.rows[0].cells.length);
+
+    // Evitamos duplicados
+    if (tabla.rows[fila].cells[columna].getAttribute("pareja") == null) {
+      tabla.rows[fila].cells[columna].setAttribute("pareja", `${id}`);
+      generados++;
+    }
   }
 }
 
@@ -120,36 +122,35 @@ function getRandomArbitrary(min, max) {
 
 // Comprueba si hay ganador
 function comprobarGanador() {
-
   // For of -> Para cada "casilla" del array de elementos
   for (const casilla of elementos) {
     const iluminado = casilla.classList.contains("iluminado"); // Contiene la class=iluminado? -> True / False
 
-    if(iluminado == false) {
+    if (iluminado == false) {
       return; // Paramos la ejecución de la función
     }
   }
 
   // Solo llega si no ha saltado el return -> Todas están iluminadas
   alert("has ganado");
-  ganador = true;
+  bloqueado = true;
 }
 
 niveles.onsubmit = (event) => {
   event.preventDefault(); // No recarga la página
   const nivel = document.querySelector('input[name="nivel"]:checked').value; // Nos devuelve el valor del nivel seleccionado (F M S)
 
-  if(nivel == "F") {
+  if (nivel == "F") {
     window.location = "facil.html";
-  } else if(nivel == "M") {
+  } else if (nivel == "M") {
     window.location = "medio.html";
-  } else if(nivel == "D") {
+  } else if (nivel == "D") {
     window.location = "dificil.html";
-  } else if(nivel == "P") {
+  } else if (nivel == "P") {
     // Tener en cuenta lo que ha puesto el usuario (filas, columnas, luces)
-    
+
     const data = new FormData(event.target); // Habilita getters y setters para el formulario
-    
+
     const filas = data.get("filas");
     const columnas = data.get("columnas");
     const luces = data.get("luces");
@@ -161,6 +162,5 @@ niveles.onsubmit = (event) => {
     url.searchParams.append("luces", luces);
 
     window.location = url.toString();
-    
   }
-}
+};

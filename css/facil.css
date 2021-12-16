@@ -10,6 +10,10 @@ body{
   
 }
 
+.iluminado h1 {
+  text-align: center;
+}
+
 .titulot{
   display: flex;
   flex-direction: column;
@@ -41,6 +45,10 @@ td {
 
 .iluminado {
   background-color: yellow;
+}
+
+.incorrecto {
+  background-color: red;
 }
 
 #nd{

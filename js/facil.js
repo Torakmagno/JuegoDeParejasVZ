@@ -1,11 +1,11 @@
 const elementos = document.getElementsByTagName("td"); // -> Devuelve lista de todos los <td></td>
 const tabla = document.getElementById("tablero"); // -> Devuelve el elemento cuyo id es tablero
-const niveles = document.getElementById("niveles");
-const contador = document.getElementById("intentos");
+const filas=tabla.rows.length;
+const columnas=tabla.rows[0].cells.length;
 
 
-let intentos=0;
-let ganador = false;
+let bloqueado = false;
+let ultimoSeleccionado;
 
 // Itera las filas
 for (let i = 0; i < tabla.rows.length; i++) {
@@ -18,76 +18,77 @@ for (let i = 0; i < tabla.rows.length; i++) {
     // j -> (num columna)
     // casilla -> (td)
     
-    // asignamos onclick a la casilla
+        // asignamos onclick a la casilla
     casilla.onclick = () => {
 
-      if(ganador == false) { // Solo se ejecuta si no hay ganador
+      // Si el juego no ha finalizado y la casilla seleccionada no está iluminada
+      if (bloqueado == false && !casilla.classList.contains("iluminado")) {
+        // Solo se ejecuta si no hay ganador
 
-          intentos++;
-          contador.innerHTML = "Intentos : " + intentos; 
+        casilla.innerHTML = `<h1>${casilla.getAttribute("pareja")}</h1>`; // Si usamos este tipo de comillas (` `), podemos combinar texto y variables (con ${})
+        casilla.classList.add("iluminado"); // Interruptor de clases
 
-      casilla.classList.toggle("iluminado") // Interruptor de clases
+        // El primero que se selecciona
+        if (!ultimoSeleccionado) {
+          ultimoSeleccionado = casilla;
+        }
 
-      // Iluminar las de alrededor
+        // Parejas NO coinciden
+        else if (ultimoSeleccionado.getAttribute("pareja") != casilla.getAttribute("pareja")) {
+          
+          // Bloqueamos el click
+          bloqueado = true;
 
-      // arriba
-      if(i > 0) { 
-        tabla.rows[i-1] // seleccionamos fila (una menos)
-          .cells[j] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
+          // Esperamos 1 segundo
+          setTimeout(() => {
+            // Apagamos la original (y ocultamos el texto)
+            ultimoSeleccionado.innerHTML = "";
+            ultimoSeleccionado.classList.remove("iluminado");
+
+            // Eliminamos la última seleccionada
+            ultimoSeleccionado = undefined; // En javascript moderno no se suele usar null
+
+            // Apagamos la seleccionada
+            casilla.innerHTML = "";
+            casilla.classList.remove("iluminado");
+
+            // Reactivamos el click
+            bloqueado = false;
+
+          }, 1000);
+        }
+
+        // Parejas coinciden
+        else {
+          ultimoSeleccionado = undefined;
+        }
+
+        comprobarGanador();
       }
-      
-      // abajo
-      if(i < tabla.rows.length - 1) {
-        tabla.rows[i+1] // seleccionamos fila (una menos)
-          .cells[j] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
-      }
-      
-      // izquierda
-      if(j > 0) {
-        tabla.rows[i] // seleccionamos fila (una menos)
-          .cells[j-1] // seleccionamos columna
-          .classList.toggle("iluminado") // ilumninamos
-      }
+    };
+  }
+}
 
-      // derecha
-      if(j < tabla.rows[0].cells.length - 1) {
-        tabla.rows[i] // seleccionamos fila (una menos)
-        .cells[j+1] // seleccionamos columna
-        .classList.toggle("iluminado") // ilumninamos
-      }
-      comprobarGanador();
+for (let index = 0; index < (filas * columnas) / 2; index++) { // Hay tantas parejas como (filas*columnas)/2
+  generarPareja(index);  
+}
+
+// Generamos las parejas (recibe el id de la pareja) 
+function generarPareja(id) {
+  let generados = 0;
+
+  // Como son parejas, hacemos 2
+  while (generados < 2) {
+    const fila = getRandomArbitrary(0, tabla.rows.length);
+    const columna = getRandomArbitrary(0, tabla.rows[0].cells.length);
+
+    // Evitamos duplicados
+    if (tabla.rows[fila].cells[columna].getAttribute("pareja") == null) {
+      tabla.rows[fila].cells[columna].setAttribute("pareja", `${id}`);
+      generados++;
     }
-
-  }
-  }
-
-  // const array = [ 10, 40, 30 ];
-
-  // array[0] -> 10
-  // array[1] -> 40
-  // array[2] -> 30
-
-  // array.length -> 3
-
-
-  
-}
-
-let generados = 0;
-
-while(generados < 10) {  //establecemos el numero de luces aleatorias.
-  const fila = getRandomArbitrary(0, tabla.rows.length);
-  const columna = getRandomArbitrary(0, tabla.rows[0].cells.length);
-
-  if(!tabla.rows[fila].cells[columna].classList.contains("iluminado")) { // Si la lista de clases no contiene iluminado 
-    tabla.rows[fila].cells[columna].classList.toggle("iluminado");
-    generados++;
   }
 }
-
-
 
 
 // Retorna un número aleatorio entre min (incluido) y max (incluido)
@@ -109,7 +110,7 @@ function comprobarGanador() {
 
   // Solo llega si no ha saltado el return -> Todas están iluminadas
   alert("has ganado");
-  ganador = true;
+  bloqueado = true;
 }
 
 niveles.onsubmit = (event) => {
@@ -138,9 +139,8 @@ niveles.onsubmit = (event) => {
     url.searchParams.append("luces", luces);
 
     window.location = url.toString();
-
-
-}
+    
+  }
 }  
  
     
